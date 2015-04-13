@@ -24,7 +24,7 @@ func TestReadWriterPing(t *testing.T) {
         // Decrypt message
         buf := make([]byte, 1024)
         n, err := secureR.Read(buf)
-        if err != nil {
+        if err != nil && err != io.EOF {
                 t.Fatal(err)
         }
         buf = buf[:n]
@@ -104,7 +104,7 @@ func TestSecureEchoServer(t *testing.T) {
 
         buf := make([]byte, 2048)
         n, err := conn.Read(buf)
-        if err != nil {
+        if err != nil && err != io.EOF {
                 t.Fatal(err)
         }
 
@@ -134,7 +134,7 @@ func TestSecureServe(t *testing.T) {
         }
         buf := make([]byte, 2048)
         n, err := conn.Read(buf)
-        if err != nil {
+        if err != nil && err != io.EOF {
                 t.Fatal(err)
         }
         if got := string(buf[:n]); got == unexpected {
@@ -163,7 +163,7 @@ func TestSecureDial(t *testing.T) {
                                 c.Write(key[:])
                                 buf := make([]byte, 2048)
                                 n, err := c.Read(buf)
-                                if err != nil {
+                                if err != nil && err != io.EOF {
                                         t.Fatal(err)
                                 }
                                 if got := string(buf[:n]); got == "hello world\n" {
