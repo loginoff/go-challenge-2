@@ -58,7 +58,7 @@ func main() {
         }
         buf := make([]byte, len(os.Args[2]))
         n, err := conn.Read(buf)
-        if err != nil {
+        if err != nil && err != io.EOF {
                 log.Fatal(err)
         }
         fmt.Printf("%s\n", buf[:n])
