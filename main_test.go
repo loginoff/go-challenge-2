@@ -8,6 +8,19 @@ import (
         "testing"
 )
 
+func TestRandom(t *testing.T) {
+        r, w := io.Pipe()
+        buf := make([]byte,1024)
+        sr := NewSecureReader(r,nil,nil)
+
+        go func() {
+                defer w.Close()
+                fmt.Fprintf(w, "Wtf is happening")
+        }()
+        sr.Read(buf)
+
+        fmt.Printf("From secreader: %s\n", buf)
+}
 func TestReadWriterPing(t *testing.T) {
         priv, pub := &[32]byte{'p', 'r', 'i', 'v'}, &[32]byte{'p', 'u', 'b'}
 
