@@ -9,13 +9,15 @@ import (
 )
 
 func TestRandom(t *testing.T) {
+        priv, pub := &[32]byte{'p','r','i','v'}, &[32]byte{'p','u','b'}
         r, w := io.Pipe()
         buf := make([]byte,1024)
-        sr := NewSecureReader(r,nil,nil)
+        sr := NewSecureReader(r,priv,pub)
+        sw := NewSecureWriter(w,priv,pub)
 
         go func() {
                 defer w.Close()
-                fmt.Fprintf(w, "Wtf is happening")
+                fmt.Fprintf(sw, "Wtf is happening")
         }()
         sr.Read(buf)
 
