@@ -94,8 +94,6 @@ func Serve(l net.Listener) error {
                         return err
                 }
         }
-
-        return nil
 }
 
 func main() {
