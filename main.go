@@ -8,6 +8,7 @@ import (
         "net"
         "os"
         "crypto/rand"
+        "golang.org/x/crypto/nacl/box"
 )
 
 // Generate a priv/pub keypair
@@ -34,7 +35,7 @@ func Dial(addr string) (io.ReadWriteCloser, error) {
         }
 
         //Generate a keypair for the client
-        cpriv, cpub, err := generate_keypair()
+        cpub, cpriv, err := box.GenerateKey(rand.Reader)
         if err != nil {
                 return nil, err
         }
@@ -52,9 +53,10 @@ func Dial(addr string) (io.ReadWriteCloser, error) {
         if err != nil {
                 return nil, err
         }
+        fmt.Printf("key sent by client(%d) %v\n",n,cpub)
 
-        secread := NewSecureReader(conn, &cpriv, &spub)
-        secwrite := NewSecureWriter(conn, &cpriv, &spub)
+        secread := NewSecureReader(conn, cpriv, &spub)
+        secwrite := NewSecureWriter(conn, cpriv, &spub)
 
         return SecureSocket{
                 Reader: secread,
@@ -71,7 +73,7 @@ func Serve(l net.Listener) error {
         }
 
         //Generate private and public keys for the server
-        spriv, spub, err := generate_keypair()
+        spub, spriv, err := box.GenerateKey(rand.Reader)
         if err != nil {
                 return err
         }
@@ -91,8 +93,8 @@ func Serve(l net.Listener) error {
         }
         fmt.Printf("key received on server %v\n",cpub)
 
-        secread := NewSecureReader(conn, &spriv, &cpub)
-        secwrite := NewSecureWriter(conn, &spriv, &cpub)
+        secread := NewSecureReader(conn, spriv, &cpub)
+        secwrite := NewSecureWriter(conn, spriv, &cpub)
         buf := make([]byte,1024)
         var n int
         for {
