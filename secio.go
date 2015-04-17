@@ -4,7 +4,7 @@ import (
 	"io"
 	"golang.org/x/crypto/nacl/box"
 	"fmt"
-	"crypto/rand"
+	// "crypto/rand"
 )
 
 type SecureReader struct {
@@ -21,12 +21,13 @@ type SecureWriter struct {
 	Nonce [24]byte
 }
 
-type SecureReadWriteCloser struct {
-	SecureReader
-	SecureWriter
+type SecureSocket struct {
+	io.Reader
+	io.Writer
+	io.Closer
 }
 
-func (sr SecureReader) Read(buf []byte) (n int, err error) {
+func (sr *SecureReader) Read(buf []byte) (n int, err error) {
 	cyphertext := make([]byte, len(buf)+box.Overhead)
 	n, err = sr.r.Read(cyphertext)
 	if err != nil {
@@ -40,7 +41,7 @@ func (sr SecureReader) Read(buf []byte) (n int, err error) {
 	return len(ret), nil
 }
 
-func (sw SecureWriter) Write(buf []byte) (n int, err error) {
+func (sw *SecureWriter) Write(buf []byte) (n int, err error) {
 	ret := box.Seal(nil,buf,&sw.Nonce,sw.pub,sw.priv)
 
 	n, err = sw.w.Write(ret)
@@ -58,12 +59,12 @@ func NewSecureReader(r io.Reader, priv, pub *[32]byte) io.Reader {
         	pub: pub,
         	priv: priv,
         }
-        _, err := rand.Read(sr.Nonce[:])
-        if err != nil {
-        	fmt.Printf("Failed to initialize Nonce\n")
-        }
+        // _, err := rand.Read(sr.Nonce[:])
+        // if err != nil {
+        // 	fmt.Printf("Failed to initialize Nonce\n")
+        // }
 
-        return sr
+        return &sr
 }
 
 // NewSecureWriter instantiates a new SecureWriter
@@ -73,10 +74,10 @@ func NewSecureWriter(w io.Writer, priv, pub *[32]byte) io.Writer {
         	pub: pub,
         	priv: priv,
         }
-        _, err := rand.Read(sw.Nonce[:])
-        if err != nil {
-        	fmt.Printf("Failed to initialize Nonce\n")
-        }
+        // _, err := rand.Read(sw.Nonce[:])
+        // if err != nil {
+        // 	fmt.Printf("Failed to initialize Nonce\n")
+        // }
 
-        return sw
+        return &sw
 }

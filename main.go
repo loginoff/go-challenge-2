@@ -29,7 +29,38 @@ func generate_keypair() (priv, pub [32]byte, err error) {
 // and return a reader/writer.
 func Dial(addr string) (io.ReadWriteCloser, error) {
         conn, err := net.Dial("tcp", addr)
-        return conn, err
+        if err != nil {
+                return nil, err
+        }
+
+        //Generate a keypair for the client
+        cpriv, cpub, err := generate_keypair()
+        if err != nil {
+                return nil, err
+        }
+
+        //Receive the public key of the server
+        var spub [32]byte
+        n,err := conn.Read(spub[:])
+        if err != nil {
+                return nil, err
+        }
+        fmt.Printf("key received by client(%d) %v\n",n,spub)
+
+        //Send our public key to the server
+        _,err = conn.Write(cpub[:])
+        if err != nil {
+                return nil, err
+        }
+
+        secread := NewSecureReader(conn, &cpriv, &spub)
+        secwrite := NewSecureWriter(conn, &cpriv, &spub)
+
+        return SecureSocket{
+                Reader: secread,
+                Writer: secwrite,
+                Closer: conn,
+                }, err
 }
 
 // Serve starts a secure echo server on the given listener.
@@ -48,15 +79,17 @@ func Serve(l net.Listener) error {
         //Public key of the client
         var cpub [32]byte
 
-        conn.Write(spub[:])
+        _,err = conn.Write(spub[:])
         if err != nil {
                 return err
         }
+        fmt.Printf("key sent from server %v\n",spub)
 
-        conn.Read(cpub[:])
+        _,err = conn.Read(cpub[:])
         if err != nil {
                 return err
         }
+        fmt.Printf("key received on server %v\n",cpub)
 
         secread := NewSecureReader(conn, &spriv, &cpub)
         secwrite := NewSecureWriter(conn, &spriv, &cpub)
