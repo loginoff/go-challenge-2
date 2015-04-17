@@ -11,20 +11,6 @@ import (
         "golang.org/x/crypto/nacl/box"
 )
 
-// Generate a priv/pub keypair
-func generate_keypair() (priv, pub [32]byte, err error) {
-        _,err = rand.Read(priv[:])
-        if err != nil {
-                return
-        }
-
-        _,err = rand.Read(pub[:])
-        if err != nil {
-                return
-        }
-        return
-}
-
 // Dial generates a private/public key pair,
 // connects to the server, perform the handshake
 // and return a reader/writer.

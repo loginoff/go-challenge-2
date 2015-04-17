@@ -1,72 +1,81 @@
+//This file contains the implementations of SecureWriter and SecureReader.
+//They are used to transparently encrypt and decrypt data that goes through them,
+//see http://golang-challenge.com/go-challenge2/
 package main
 
 import (
 	"io"
 	"golang.org/x/crypto/nacl/box"
-	"fmt"
 	"crypto/rand"
 )
 
+//These constants define the sizes of different parts of the messages
 const (
 	NonceLength = 24
 	HeaderLength = box.Overhead + NonceLength
+	Bufsize = HeaderLength + 32768 
 )
+
+//The SecureReader wraps an ordinary io.Reader and
+//decrypts the bytes read from the underlying io.Reader
+//using a public and private keypair defined on initialization
+//It also utilizes a buffer to hold the cyphertext and facilitates
+//messages up to 32KB (defined by Bufsize constant)
 type SecureReader struct {
 	r io.Reader
 	priv *[32]byte
 	pub *[32]byte
-	receivebuf [2048]byte
+	receivebuf [Bufsize]byte
 	nonce [24]byte
 }
 
+//The SecureWriter wraps an ordinary io.Writer and
+//encrypts all bytes before sending them to the underlying writer
+//using a public and private keypair defined on initialization.
+//It facilitates the sending of messages up to 32KB (defined by Bufsize constant)
 type SecureWriter struct {
 	w io.Writer
 	priv *[32]byte
 	pub *[32]byte
-	sendbuf [2048]byte
+	sendbuf [Bufsize]byte
 	nonce [24]byte
 }
 
+//A wrapper type to securely send data through a socket
 type SecureSocket struct {
 	io.Reader
 	io.Writer
 	io.Closer
 }
 
+//Reads an encrypted message from a SecureWriter and returns the 
+//unencrypted bytes into buf.
 func (sr *SecureReader) Read(buf []byte) (n int, err error) {
-	// fmt.Println("----------Starting read---------")
-	// fmt.Printf("Reader pub %v\n",sr.pub)
-	// fmt.Printf("Reader priv %v\n",sr.priv)
 	n, err = sr.r.Read(sr.receivebuf[:])
 	if err != nil {
 		return n, err
 	}
-	// fmt.Printf("read N: %d\n",n)
 	copy(sr.nonce[:],sr.receivebuf[:24])
 	cyphertext := sr.receivebuf[NonceLength:n]
-	// fmt.Printf("len cyphertext %d\n",n)
-	// fmt.Printf("cyphertext: %v\n",cyphertext)
 
-	_,ok := box.Open(buf[0:0],cyphertext, &sr.nonce,sr.pub,sr.priv)
-	fmt.Printf("alright: %v\n",ok)
-	// fmt.Printf("%v\n",ret)
-	// fmt.Println("----------Ending read---------")
+	box.Open(buf[0:0],cyphertext, &sr.nonce,sr.pub,sr.priv)
 
-	return n-box.Overhead, nil
+	return n-HeaderLength, nil
 }
 
+//Allows sending encrypted bytes to a SecureReader as messages.
+//Generates a random "nonce" on each invocation and prepends
+//that to the message. Encrypts the bytes in buf, utilizing this nonce
+//before sending them together with the "nonce" to the underlying writer.
 func (sw *SecureWriter) Write(buf []byte) (n int, err error) {
 	_, err = rand.Read(sw.nonce[:])
 	copy(sw.sendbuf[:24],sw.nonce[:])
 	box.Seal(sw.sendbuf[:24],buf,&sw.nonce,sw.pub,sw.priv)
-	// fmt.Printf("data written %v\n",ret)
 
 	n, err = sw.w.Write(sw.sendbuf[:HeaderLength+len(buf)])
-	// fmt.Printf("write N: %d\n",n)
 	if err != nil {
 		return n, err
 	}
-	// fmt.Println("----------Ending write---------")
 	return n-HeaderLength, nil
 }
 
@@ -78,10 +87,6 @@ func NewSecureReader(r io.Reader, priv, pub *[32]byte) io.Reader {
         	priv: priv,
         	pub: pub,
         }
-        // _, err := rand.Read(sr.Nonce[:])
-        // if err != nil {
-        // 	fmt.Printf("Failed to initialize Nonce\n")
-        // }
 
         return &sr
 }
@@ -93,10 +98,6 @@ func NewSecureWriter(w io.Writer, priv, pub *[32]byte) io.Writer {
         	priv: priv,
         	pub: pub,
         }
-        // _, err := rand.Read(sw.Nonce[:])
-        // if err != nil {
-        // 	fmt.Printf("Failed to initialize Nonce\n")
-        // }
 
         return &sw
 }
