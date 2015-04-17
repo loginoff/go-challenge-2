@@ -11,14 +11,19 @@ type SecureReader struct {
 	r io.Reader
 	priv *[32]byte
 	pub *[32]byte
-	nonce [24]byte
+	Nonce [24]byte
 }
 
 type SecureWriter struct {
 	w io.Writer
 	priv *[32]byte
 	pub *[32]byte
-	nonce [24]byte
+	Nonce [24]byte
+}
+
+type SecureReadWriteCloser struct {
+	SecureReader
+	SecureWriter
 }
 
 func (sr SecureReader) Read(buf []byte) (n int, err error) {
@@ -29,14 +34,14 @@ func (sr SecureReader) Read(buf []byte) (n int, err error) {
 	}
 	cyphertext = cyphertext[:n]
 
-	ret,ok := box.Open(buf[0:0],cyphertext, &sr.nonce,sr.pub,sr.priv)
+	ret,ok := box.Open(buf[0:0],cyphertext, &sr.Nonce,sr.pub,sr.priv)
 	fmt.Printf("alright: %v\n",ok)
 
 	return len(ret), nil
 }
 
 func (sw SecureWriter) Write(buf []byte) (n int, err error) {
-	ret := box.Seal(nil,buf,&sw.nonce,sw.pub,sw.priv)
+	ret := box.Seal(nil,buf,&sw.Nonce,sw.pub,sw.priv)
 
 	n, err = sw.w.Write(ret)
 	if err != nil {
@@ -53,9 +58,9 @@ func NewSecureReader(r io.Reader, priv, pub *[32]byte) io.Reader {
         	pub: pub,
         	priv: priv,
         }
-        _, err := rand.Read(sr.nonce[:])
+        _, err := rand.Read(sr.Nonce[:])
         if err != nil {
-        	fmt.Printf("Failed to initialize nonce\n")
+        	fmt.Printf("Failed to initialize Nonce\n")
         }
 
         return sr
@@ -68,9 +73,9 @@ func NewSecureWriter(w io.Writer, priv, pub *[32]byte) io.Writer {
         	pub: pub,
         	priv: priv,
         }
-        _, err := rand.Read(sw.nonce[:])
+        _, err := rand.Read(sw.Nonce[:])
         if err != nil {
-        	fmt.Printf("Failed to initialize nonce\n")
+        	fmt.Printf("Failed to initialize Nonce\n")
         }
 
         return sw

@@ -12,8 +12,10 @@ func TestRandom(t *testing.T) {
         priv, pub := &[32]byte{'p','r','i','v'}, &[32]byte{'p','u','b'}
         r, w := io.Pipe()
         buf := make([]byte,1024)
-        sr := NewSecureReader(r,priv,pub)
-        sw := NewSecureWriter(w,priv,pub)
+        var sr SecureReader = NewSecureReader(r,priv,pub).(SecureReader)
+        var sw SecureWriter = NewSecureWriter(w,priv,pub).(SecureWriter)
+
+        sr.Nonce = sw.Nonce
 
         go func() {
                 defer w.Close()
