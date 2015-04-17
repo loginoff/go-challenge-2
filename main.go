@@ -42,18 +42,16 @@ func Dial(addr string) (io.ReadWriteCloser, error) {
 
         //Receive the public key of the server
         var spub [32]byte
-        n,err := conn.Read(spub[:])
+        _,err = conn.Read(spub[:])
         if err != nil {
                 return nil, err
         }
-        fmt.Printf("key received by client(%d) %v\n",n,spub)
 
         //Send our public key to the server
         _,err = conn.Write(cpub[:])
         if err != nil {
                 return nil, err
         }
-        fmt.Printf("key sent by client(%d) %v\n",n,cpub)
 
         secread := NewSecureReader(conn, cpriv, &spub)
         secwrite := NewSecureWriter(conn, cpriv, &spub)
@@ -85,13 +83,11 @@ func Serve(l net.Listener) error {
         if err != nil {
                 return err
         }
-        fmt.Printf("key sent from server %v\n",spub)
 
         _,err = conn.Read(cpub[:])
         if err != nil {
                 return err
         }
-        fmt.Printf("key received on server %v\n",cpub)
 
         secread := NewSecureReader(conn, spriv, &cpub)
         secwrite := NewSecureWriter(conn, spriv, &cpub)
