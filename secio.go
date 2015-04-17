@@ -7,13 +7,15 @@ import (
 	"io"
 	"golang.org/x/crypto/nacl/box"
 	"crypto/rand"
+	"fmt"
 )
 
 //These constants define the sizes of different parts of the messages
 const (
 	NonceLength = 24
 	HeaderLength = box.Overhead + NonceLength
-	Bufsize = HeaderLength + 32768 
+	MaxMsgLength = 32768
+	Bufsize = HeaderLength + MaxMsgLength
 )
 
 //The SecureReader wraps an ordinary io.Reader and
@@ -48,10 +50,21 @@ type SecureSocket struct {
 	io.Closer
 }
 
+type MaxBytesError struct {}
+
+func (MaxBytesError) Error() string {
+	return fmt.Sprintf("Cannot operate on more than %d bytes at a time", MaxMsgLength)
+}
+
 //Reads an encrypted message from a SecureWriter and returns the 
 //unencrypted bytes into buf.
 func (sr *SecureReader) Read(buf []byte) (n int, err error) {
-	n, err = sr.r.Read(sr.receivebuf[:])
+	if len(buf) > MaxMsgLength {
+		return 0, MaxBytesError{}
+	}
+
+	//Try to read the header and enough bytes to fill the output buffer
+	n, err = sr.r.Read(sr.receivebuf[:len(buf)+HeaderLength])
 	if err != nil {
 		return n, err
 	}
@@ -68,6 +81,10 @@ func (sr *SecureReader) Read(buf []byte) (n int, err error) {
 //that to the message. Encrypts the bytes in buf, utilizing this nonce
 //before sending them together with the "nonce" to the underlying writer.
 func (sw *SecureWriter) Write(buf []byte) (n int, err error) {
+	if len(buf) > MaxMsgLength {
+		return 0, MaxBytesError{}
+	}
+	
 	_, err = rand.Read(sw.nonce[:])
 	copy(sw.sendbuf[:24],sw.nonce[:])
 	box.Seal(sw.sendbuf[:24],buf,&sw.nonce,sw.pub,sw.priv)

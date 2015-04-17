@@ -26,6 +26,7 @@ func Dial(addr string) (io.ReadWriteCloser, error) {
                 return nil, err
         }
 
+        //Perform the handshake with the server
         //Receive the public key of the server
         var spub [32]byte
         _,err = conn.Read(spub[:])
@@ -39,6 +40,7 @@ func Dial(addr string) (io.ReadWriteCloser, error) {
                 return nil, err
         }
 
+        //Initialise the secure socket with the correct keys
         secread := NewSecureReader(conn, cpriv, &spub)
         secwrite := NewSecureWriter(conn, cpriv, &spub)
 
@@ -62,6 +64,7 @@ func Serve(l net.Listener) error {
                 return err
         }
 
+        //Perform the handshake with the client
         //Public key of the client
         var cpub [32]byte
 
@@ -75,9 +78,11 @@ func Serve(l net.Listener) error {
                 return err
         }
 
+        //Initialize a SecureReader and SecureWriter on top of the
+        //connection and echo everything back to the client
         secread := NewSecureReader(conn, spriv, &cpub)
         secwrite := NewSecureWriter(conn, spriv, &cpub)
-        buf := make([]byte,1024)
+        buf := make([]byte,32768)
         var n int
         for {
                 n,err = secread.Read(buf)
